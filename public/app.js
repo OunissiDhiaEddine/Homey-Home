@@ -109,7 +109,6 @@ const state = {
   lights: {}, // light remote id → "on" | "off", kept by the server
   tokens: [],
   device: null,
-  homeydeckUrl: "https://homeydeck.vercel.app",
   climate: null,
   deviceState: "checking", // checking | online | offline | none
   climateTimer: null,
@@ -142,7 +141,8 @@ async function api(path, body) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.ok === false) {
     const err = new ApiError(friendly(data.error) || `The server answered ${res.status}.`, res.status, data.code);
-    if (["signed_out", "disabled", "no_access"].includes(data.code) && state.user) signedOut(err.message);
+    if (data.code === "no_access") goToDeck();
+    else if (["signed_out", "disabled"].includes(data.code) && state.user) signedOut(err.message);
     throw err;
   }
   return data;
@@ -165,15 +165,22 @@ $("toast-close").addEventListener("click", () => ($("toast").hidden = true));
 
 // --- session -------------------------------------------------------------------
 
+/** Accounts without room access (and password changes) live on the HomeyDeck page. */
+function goToDeck() {
+  location.replace("/deck/");
+}
+
 async function loadSession() {
   try {
-    const data = await api("/api/session");
+    const data = await api("/api/home");
+    if (data.user.mustChange) return goToDeck();
     applySession(data);
     showView("app");
     refreshClimate();
     startClimate();
     return true;
   } catch (err) {
+    if (err.code === "no_access") return false;
     if (err.status === 401 || err.status === 403) showView("auth");
     else {
       showView("auth");
@@ -188,8 +195,6 @@ function applySession(data) {
   state.home = data.home;
   state.lights = data.lights ?? {};
   state.device = data.device;
-  state.homeydeckUrl = data.homeydeckUrl || state.homeydeckUrl;
-  for (const id of ["deck-link", "settings-deck", "auth-deck-link"]) $(id).href = state.homeydeckUrl;
   if (!state.device.configured) setDeviceState("none");
   render();
 }
@@ -215,7 +220,7 @@ async function checkServer() {
     const res = await fetch("/api/health", { cache: "no-store" });
     const h = await res.json();
     if (!h.database) {
-      $("server-notice-text").textContent = "Connect HomeyDeck's Upstash Redis database to this Vercel project (Storage → Connect), then redeploy. Sharing it is what lets you sign in with your HomeyDeck account.";
+      $("server-notice-text").textContent = "Connect the Upstash Redis database to this Vercel project (Storage → Connect), then redeploy.";
       $("server-notice").hidden = false;
     } else $("server-notice").hidden = true;
   } catch {}
@@ -405,7 +410,7 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible" || !state.user) return;
   refreshClimate();
   // Siri may have pressed something while the app was away.
-  api("/api/session").then((data) => applySession(data)).catch(() => {});
+  api("/api/home").then((data) => applySession(data)).catch(() => {});
 });
 $("temp-tile").addEventListener("click", () => refreshClimate(true));
 $("hum-tile").addEventListener("click", () => refreshClimate(true));

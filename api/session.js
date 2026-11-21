@@ -1,6 +1,5 @@
 import { route } from "../lib/http.js";
-import { sessionPost } from "../lib/auth.js";
-import { sessionGet } from "../lib/device.js";
+import { sessionGet, sessionPost } from "../lib/accounts.js";
 
 const handleGET = route(sessionGet);
 export const GET = (request) => handleGET(request);

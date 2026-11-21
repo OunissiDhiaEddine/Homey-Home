@@ -1,0 +1,29 @@
+{
+  "name": "HomeyDeck",
+  "short_name": "HomeyDeck",
+  "description": "Wake and control your gaming PC.",
+  "start_url": "/deck/",
+  "scope": "/deck/",
+  "display": "standalone",
+  "background_color": "#0d0f1a",
+  "theme_color": "#0d0f1a",
+  "icons": [
+    {
+      "src": "/deck/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/deck/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/deck/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "/deck/"
+}

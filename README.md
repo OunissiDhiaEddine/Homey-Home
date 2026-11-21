@@ -1,17 +1,18 @@
 # Homey Home
 
-A tiny Home Assistant for one room, running only on Vercel. There's no VPS and nothing to install at home: a PWA plus a few serverless functions that talk to your **Broadlink RM4 Pro** over the internet.
+A tiny Home Assistant for one room, running only on Vercel, with **HomeyDeck** built in at `/deck`. There's no VPS and nothing to install at home: a PWA plus a few serverless functions that talk to your **Broadlink RM4 Pro** over the internet.
 
 - **Dashboard:** your room's temperature and humidity (from the RM4 Pro's HTS2 sensor cable), with a 24-hour graph.
 - **Room light:** a card on the dashboard with buttons you set up yourself (On, Off, Brighter, Dimmer, or anything else).
 - **Record anything:** remotes by type (TV, AC, light, fan, speaker, projector, TV box, other), each starting with the usual buttons. Record them from your real remote (infrared, or 433/315 MHz radio), or paste Broadlink codes from Home Assistant/SmartIR.
-- **Same login as HomeyDeck**, plus a button that jumps to HomeyDeck.
+- **HomeyDeck included:** the HomeyDeck app (wake and control your gaming PC) is the `/deck` page, with one sign-in for both. Its API, agents and Steam Deck plugin work exactly as before.
 - **Siri & Shortcuts:** "Hey Siri, light on", scenes, and "what's the temperature".
 
 ```
 phone (PWA) ──HTTPS──▶ Vercel function ──UDP over the internet──▶ your router (DDNS) ──port forward──▶ RM4 Pro :80
                           │
-                          └──▶ Upstash Redis (shared with HomeyDeck: accounts, sessions, your remotes and codes)
+                          └──▶ Upstash Redis (accounts, sessions, PCs, your remotes and codes)
+PC agent / Steam Deck ──HTTPS──▶ /api/agent/*, /api/session, /api/status, /api/command (HomeyDeck's API)
 ```
 
 The RM4 speaks Broadlink's local protocol: AES-encrypted UDP packets on port 80. `lib/broadlink.js` implements it with Node's built-in `dgram` and `crypto`, the same packets as [python-broadlink](https://github.com/mjg59/python-broadlink), the library Home Assistant uses. HomeyDeck's Wake-on-LAN already sends UDP from Vercel the same way.
@@ -32,7 +33,7 @@ Your DDNS name must point at your home's public IP. If HomeyDeck's Wake-on-LAN w
 
 1. Push this folder to a new GitHub repository.
 2. In Vercel: **Add New… → Project → Import** that repo. Framework preset: **Other**. Leave the build settings empty, then **Deploy**.
-3. **Share HomeyDeck's database:** in the new project open **Storage**, pick the Upstash Redis database HomeyDeck already uses, and **Connect Project**. That's what makes your HomeyDeck login work here. Homey Home's own keys all start with `hh:`, so the two apps don't collide.
+3. **Connect the database:** in the project open **Storage**, pick your Upstash Redis database (the one HomeyDeck used), and **Connect Project**. Accounts, sessions and PCs live there. Homey Home's own keys all start with `hh:`.
 4. **Function region:** in **Settings → Functions**, choose the same region as HomeyDeck (next to the database).
 5. **Redeploy** so the database settings take effect.
 
@@ -41,7 +42,9 @@ Optional environment variables:
 | Name | What it does |
 |---|---|
 | `HOME_USERS` | Usernames besides the HomeyDeck admin that may use Homey Home, comma separated (e.g. `sara,omar`). Other HomeyDeck users are refused, so friends you invited to HomeyDeck can't touch your lights. |
-| `HOMEYDECK_URL` | Where the HomeyDeck button goes. Defaults to `https://homeydeck.vercel.app`. |
+| `DATA_KEY` | **Required for the HomeyDeck page.** The same value HomeyDeck had: it decrypts the PCs' wake details and signs dual-boot agents. A different key means re-entering wake details and re-pairing second systems. |
+| `ADMIN_USERNAME` | The HomeyDeck admin's username, as HomeyDeck had it. |
+| `MAX_PCS_PER_USER`, `AGENT_DOWNLOAD_URL`, `AGENT_LINUX_DOWNLOAD_URL` | HomeyDeck's optional settings, unchanged. |
 | `BROADLINK_HOST` / `BROADLINK_PORT` | A default RM4 address, if you'd rather not set it in the app. |
 
 ### 3. First run
@@ -84,9 +87,13 @@ Names are `Remote / Button` as shown in the app, in any case. Every button's edi
 
 Ideas: put a scene on the Home Screen, or run one from **Automation** (e.g. "When I arrive home" → AC on, or "At 23:30" → Room light off).
 
-## How the login works
+## HomeyDeck and the login
 
-Homey Home reads HomeyDeck's accounts (`uname:*`, `u:*`) from the shared Redis and creates its own sessions (`sess:*`, cookie `hh_session`). Each session is added to HomeyDeck's `sessions:{uid}` list, so in HomeyDeck **Sign out everywhere**, a password change, or disabling the account also signs you out of Homey Home. Accounts and passwords are managed in HomeyDeck only. Homey Home never creates or changes them.
+The HomeyDeck web app is copied in unchanged apart from paths: its page lives in `public/deck/` (served at `/deck/`), and its API keeps its original routes (`/api/session`, `/api/pcs`, `/api/status`, `/api/command`, `/api/account`, `/api/admin`, `/api/health`, `/api/agent/*`), so paired agents and the Steam Deck plugin don't notice the move. Its source of truth is still the [HomeyDeck repo](https://github.com/OunissiDhiaEddine/HomeyDeck) (agent, Decky plugin, releases).
+
+There's one sign-in, HomeyDeck's (`POST /api/session`, cookie `hd_session`), for both pages. Every account can use the HomeyDeck page for its own PCs. Homey Home's room controls are only for the admin and `HOME_USERS`; anyone else who opens `/` is sent to `/deck/`. Invites, password changes, "sign out everywhere" and the admin page are on the HomeyDeck page (gear menu).
+
+If `homeydeck.vercel.app` is pointed at this project, its `/` redirects to `/deck/` (see `vercel.json`), so old bookmarks and installed HomeyDeck apps keep working.
 
 ## Things to know
 
@@ -102,15 +109,19 @@ Zero dependencies, Node 20+.
 ```bash
 npm run dev:fake      # http://localhost:3000, in-memory database, user dev / devpassword,
                       # plus a pretend RM4 Pro on UDP 127.0.0.1:8780 (use that in Settings)
-npm test              # protocol tests against the fake RM4 + API tests
+npm test              # protocol tests against the fake RM4 + API tests; HomeyDeck's tests
+                      # need a real Redis (REDIS_URL or redis-server) and are skipped without one.
+                      # CI (.github/workflows/ci.yml) runs everything with Redis on every push.
 ```
 
 `npm run dev` without `:fake` uses your real RM4 if you set its address in Settings. Set `KV_REST_API_URL` / `KV_REST_API_TOKEN` to use a real database instead of the in-memory one.
 
 ```
-api/        Vercel functions: session, home (remotes and buttons), device, climate, learn, send, tokens, shortcut, health
-lib/        broadlink.js (the UDP protocol), auth.js (HomeyDeck login), shortcuts.js (Siri), home.js, device.js, redis.js, http.js
-public/     the PWA: index.html, app.js, app.css, sw.js, manifest, icons
+api/        Homey Home: home, device, climate, learn, send, tokens, shortcut
+            HomeyDeck: session, account, admin, pcs, status, command, health, agent/*
+lib/        Homey Home: broadlink.js (the UDP protocol), auth.js, access.js, home.js, device.js, shortcuts.js (Siri)
+            HomeyDeck: accounts.js, pcs.js, wol.js; shared: redis.js, http.js, secrets.js
+public/     Homey Home's PWA; public/deck/ is HomeyDeck's page
 scripts/    dev server, in-memory Redis, fake RM4 Pro
 test/       node --test
 ```

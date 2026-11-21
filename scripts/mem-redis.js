@@ -18,6 +18,17 @@ export function memoryRedis() {
 
   const commands = {
     GET: ([k]) => get(k) ?? null,
+    GETDEL([k]) {
+      const v = get(k) ?? null;
+      data.delete(k);
+      return v;
+    },
+    APPEND([k, v]) {
+      const next = (get(k) ?? "") + v;
+      put(k, next);
+      return next.length;
+    },
+    SCARD: ([k]) => setOf(k).size,
     MGET: (ks) => ks.map((k) => (typeof get(k) === "string" ? get(k) : null)),
     SET([k, v, ...opts]) {
       let exp = null;
@@ -93,7 +104,8 @@ export function memoryRedis() {
   const run = (cmd) => {
     const [name, ...args] = cmd;
     const fn = commands[String(name).toUpperCase()];
-    if (!fn) return { error: `ERR unknown command '${name}' in the dev database` };
+    // EVAL (HomeyDeck's invite signup) needs a real Redis: see scripts/redis-rest.js.
+    if (!fn) return { error: `ERR '${name}' isn't supported by the in-memory dev database; set REDIS_URL to use a real Redis` };
     return { result: fn(args.map(String)) };
   };
   return { run, data };

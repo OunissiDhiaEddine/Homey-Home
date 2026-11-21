@@ -1,4 +1,4 @@
-import { health } from "../lib/device.js";
+import { health } from "../lib/pcs.js";
 import { json } from "../lib/http.js";
 
 export function GET() {

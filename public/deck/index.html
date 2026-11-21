@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>HomeyDeck</title>
+  <meta name="description" content="Wake and control your gaming PC.">
+  <meta name="theme-color" content="#0d0f1a">
+  <meta name="color-scheme" content="dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="HomeyDeck">
+  <link rel="manifest" href="/deck/manifest.webmanifest">
+  <meta name="robots" content="noindex, nofollow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="HomeyDeck">
+  <meta property="og:description" content="Wake and control your gaming PC from anywhere.">
+  <meta property="og:image" content="/deck/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="/deck/favicon.ico" sizes="48x48">
+  <link rel="icon" type="image/png" sizes="192x192" href="/deck/icon-192.png">
+  <link rel="apple-touch-icon" href="/deck/apple-touch-icon.png">
+  <link rel="stylesheet" href="/deck/app.css">
+</head>
+<body data-view="loading" data-phase="unknown">
+  <div class="glow" aria-hidden="true"></div>
+
+  <!-- Sign in / create account -->
+  <main class="auth" id="auth" hidden>
+    <div class="auth-brand">
+      <div class="orb small"><div class="orb-glow"></div><div class="orb-ring"><svg viewBox="0 0 24 24" width="46" height="46" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-6v2h3v2H7v-2h3v-2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2v9h16V6H4Z"/></svg></div></div>
+      <h1>HomeyDeck</h1>
+      <p class="muted">Wake and control your gaming PC from anywhere.</p>
+    </div>
+
+    <section class="card notice" id="server-setup" hidden>
+      <div>
+        <h2>Finish setting up this server</h2>
+        <ul id="server-setup-list"></ul>
+        <div id="data-key-box" hidden>
+          <p class="hint">A new random <code>DATA_KEY</code>, made in your browser. Copy it into Vercel, then redeploy.</p>
+          <div class="code-row"><code id="data-key"></code><button class="pill" type="button" id="copy-data-key">Copy</button></div>
+        </div>
+      </div>
+    </section>
+
+    <form class="card form" id="login-form" autocomplete="on">
+      <h2>Sign in</h2>
+      <label for="login-name">Username</label>
+      <input id="login-name" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" required>
+      <label for="login-password">Password</label>
+      <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+      <p class="form-error" id="login-error" role="alert"></p>
+      <button class="sheet-btn primary" type="submit">Sign in</button>
+      <button class="link-btn" type="button" id="show-signup">Have an invite code? Create an account</button>
+    </form>
+
+    <form class="card form" id="signup-form" autocomplete="on" hidden>
+      <h2>Create an account</h2>
+      <label for="signup-invite">Invite code</label>
+      <input id="signup-invite" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX" required>
+      <label for="signup-name">Username</label>
+      <input id="signup-name" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" minlength="3" maxlength="32" pattern="[A-Za-z0-9_\-]{3,32}" required>
+      <p class="hint">3 to 32 letters, digits, _ or -</p>
+      <label for="signup-password">Password</label>
+      <input id="signup-password" name="new-password" type="password" autocomplete="new-password" minlength="10" required>
+      <p class="hint">At least 10 characters. There's no email, so if you forget it, ask whoever invited you to reset it.</p>
+      <p class="form-error" id="signup-error" role="alert"></p>
+      <button class="sheet-btn primary" type="submit">Create account</button>
+      <button class="link-btn" type="button" id="show-login">I already have an account</button>
+    </form>
+  </main>
+
+  <!-- The deck -->
+  <div id="deck" hidden>
+    <header class="bar">
+      <span class="brand">HomeyDeck</span>
+      <select class="pc-picker" id="pc-picker" aria-label="Choose a PC" hidden></select>
+      <div class="bar-actions">
+      <a class="home-link" id="home-link" href="/" aria-label="Back to Homey Home" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3 2 11.5h3V20a1 1 0 0 0 1 1h4.5v-6h3v6H18a1 1 0 0 0 1-1v-8.5h3L12 3Z"/></svg>
+        <span>Homey Home</span>
+      </a>
+      <button class="icon-btn" id="open-menu" aria-label="Menu">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)"/></svg>
+      </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="orb">
+          <div class="orb-glow"></div>
+          <div class="orb-ring">
+            <svg viewBox="0 0 24 24" width="46" height="46" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-6v2h3v2H7v-2h3v-2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2v9h16V6H4Z"/></svg>
+          </div>
+        </div>
+        <h1 id="hostname">My PC</h1>
+        <p class="state"><span class="dot"></span><span id="phase-title">Checking…</span></p>
+        <p class="detail" id="detail"></p>
+      </section>
+
+      <section class="card setup" id="empty-card" hidden>
+        <div>
+          <h2>Add your PC</h2>
+          <p>Pair your Windows PC to wake and control it from here.</p>
+        </div>
+        <button class="pill" id="empty-add">Add PC</button>
+      </section>
+
+      <section class="card steam">
+        <div class="steam-icon">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M7 7h10a5 5 0 0 1 4.9 6l-.8 3.8a2.6 2.6 0 0 1-4.5 1.2L14.4 16H9.6l-2.2 2a2.6 2.6 0 0 1-4.5-1.2L2.1 13A5 5 0 0 1 7 7Zm1 3v1.5H6.5V13H8v1.5h1.5V13H11v-1.5H9.5V10H8Zm8.5 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm-2 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/></svg>
+      </div>
+        <div class="steam-text">
+          <h2>Steam</h2>
+          <p id="steam-subtitle">Available when the PC is on</p>
+        </div>
+        <div class="steam-action" id="steam-action"></div>
+      </section>
+
+      <section class="card steam sunshine" id="sunshine-card" hidden>
+        <div class="steam-icon">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0-6 1.2 3.3h-2.4L12 1Zm0 22-1.2-3.3h2.4L12 23ZM1 12l3.3-1.2v2.4L1 12Zm22 0-3.3 1.2v-2.4L23 12ZM4.2 4.2l3.2 1.5-1.7 1.7-1.5-3.2Zm15.6 15.6-3.2-1.5 1.7-1.7 1.5 3.2Zm0-15.6-1.5 3.2-1.7-1.7 3.2-1.5ZM4.2 19.8l1.5-3.2 1.7 1.7-3.2 1.5Z"/></svg>
+      </div>
+        <div class="steam-text">
+          <h2>Sunshine</h2>
+          <p id="sunshine-subtitle">Available when the PC is on</p>
+        </div>
+        <div class="steam-action" id="sunshine-action"></div>
+      </section>
+
+      <section class="actions">
+      <button class="tile wake" id="wake" disabled>
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M12 3v8M7.1 6.2a7.5 7.5 0 1 0 9.8 0"/></svg>
+        <span>Wake</span>
+      </button>
+      <button class="tile sleep" id="sleep" disabled>
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5a8.5 8.5 0 1 0 11.1 11.1Z"/></svg>
+        <span>Sleep</span>
+      </button>
+      <button class="tile restart" id="restart" disabled>
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M20 12a8 8 0 1 1-2.6-5.9M20 4v4.5h-4.5"/></svg>
+        <span>Restart</span>
+      </button>
+    </section>
+
+      <p class="updated" id="updated"></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="alert" hidden>
+    <span id="toast-text"></span>
+    <button class="icon-btn small" id="toast-close" aria-label="Dismiss">✕</button>
+  </div>
+
+  <!-- Confirm -->
+  <div class="sheet-backdrop" id="confirm" hidden>
+    <form class="sheet" id="confirm-form" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-text"></p>
+      <input id="confirm-password" type="password" autocomplete="current-password" placeholder="Your password" hidden>
+      <button class="sheet-btn primary" type="submit" id="confirm-yes"></button>
+      <button class="sheet-btn" type="button" data-close>Cancel</button>
+    </form>
+  </div>
+
+  <!-- Menu -->
+  <div class="sheet-backdrop" id="menu" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menu-title">
+      <h2 id="menu-title">HomeyDeck</h2>
+      <p class="hint center" id="menu-user"></p>
+
+      <h3>PCs</h3>
+      <div class="rows" id="pc-rows"></div>
+      <button class="sheet-btn" type="button" id="menu-add">Add PC</button>
+      <p class="hint" id="pc-limit"></p>
+
+      <h3>Account</h3>
+      <button class="sheet-btn" type="button" id="menu-admin" hidden>Admin: invites and users</button>
+      <button class="sheet-btn" type="button" id="menu-password">Change password</button>
+      <button class="sheet-btn" type="button" id="menu-logout">Sign out</button>
+      <button class="sheet-btn" type="button" id="menu-logout-all">Sign out on every device</button>
+      <button class="link-btn danger-text" type="button" id="menu-delete">Delete my account</button>
+      <button class="sheet-btn" type="button" data-close>Close</button>
+      <footer class="menu-links">
+        <a href="https://github.com/OunissiDhiaEddine/HomeyDeck" target="_blank" rel="noopener" aria-label="HomeyDeck on GitHub" title="HomeyDeck on GitHub">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.58 9.58 0 0 1 5 0c1.91-1.3 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>
+        </a>
+        <a href="https://buymeacoffee.com/dhiaeddine" target="_blank" rel="noopener" aria-label="Buy me a coffee" title="Buy me a coffee">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 8h13v5a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6V8Zm13 1h1.5a2.5 2.5 0 0 1 0 5H17v-2h1.5a.5.5 0 0 0 0-1H17V9ZM3 20h15v2H3v-2Z"/><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" d="M8 2.5c.8.8.8 1.7 0 2.5M11 2.5c.8.8.8 1.7 0 2.5M14 2.5c.8.8.8 1.7 0 2.5"/></svg>
+        </a>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Add or edit a PC -->
+  <div class="sheet-backdrop" id="pc-sheet" hidden>
+    <form class="sheet" id="pc-form" role="dialog" aria-modal="true" aria-labelledby="pc-title" novalidate>
+      <h2 id="pc-title">Add PC</h2>
+      <label for="pc-name">Name</label>
+      <input id="pc-name" maxlength="40" placeholder="Gaming PC" autocomplete="off">
+      <h3>Wake-on-LAN</h3>
+      <p class="hint">Needed for Wake. Your router must forward this UDP port to the PC, and the PC's network card must have Wake-on-LAN turned on.</p>
+      <label for="pc-mac">PC's MAC address</label>
+      <input id="pc-mac" placeholder="AA:BB:CC:DD:EE:FF" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <label for="pc-host">Router's DDNS name or public IP</label>
+      <input id="pc-host" placeholder="myhome.ddns.net" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="url">
+      <div class="ip-check" id="ip-check" hidden>
+        <button class="pill quiet" type="button" id="ip-btn">Check public IP</button>
+        <span class="hint mono" id="ip-result" aria-live="polite"></span>
+      </div>
+      <label for="pc-port">UDP port</label>
+      <input id="pc-port" placeholder="9" inputmode="numeric" autocomplete="off">
+      <p class="hint">Saved encrypted. Leave all three blank to add them later.</p>
+      <p class="form-error" id="pc-error" role="alert"></p>
+      <button class="sheet-btn primary" type="submit" id="pc-save">Next</button>
+      <button class="sheet-btn" type="button" id="pc-link" hidden>Dual boot? Add its other system</button>
+      <button class="sheet-btn danger" type="button" id="pc-remove" hidden>Remove this PC</button>
+      <button class="sheet-btn" type="button" data-close>Cancel</button>
+    </form>
+  </div>
+
+  <!-- Pairing -->
+  <div class="sheet-backdrop" id="pair-sheet" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pair-title">
+      <h2 id="pair-title">Pair your PC</h2>
+      <p class="hint" id="pair-intro" hidden></p>
+      <h3>On Windows</h3>
+      <ol class="steps">
+        <li>On the PC, <a id="agent-link" href="#" target="_blank" rel="noopener">download homeydeck-agent.exe</a>.</li>
+        <li>Copy the pairing code below on the PC (or keep this screen open to type it).</li>
+        <li>Double-click <code>homeydeck-agent.exe</code> and click Yes.</li>
+      </ol>
+      <div class="pair-code" id="pair-code"></div>
+      <button class="sheet-btn primary" type="button" id="copy-pair">Copy pairing code</button>
+      <h3>On Linux (Bazzite, Fedora)</h3>
+      <p class="hint">Copy this on the PC and paste it into a terminal (Konsole in Bazzite's Desktop Mode, Terminal on Fedora). It downloads the agent, pairs it and starts it at every sign-in.</p>
+      <button class="sheet-btn" type="button" id="copy-linux">Copy Linux command</button>
+      <p class="hint center" id="pair-status" aria-live="polite"></p>
+      <button class="sheet-btn" type="button" data-close>Close</button>
+    </div>
+  </div>
+
+  <!-- Password -->
+  <div class="sheet-backdrop" id="password-sheet" hidden>
+    <form class="sheet" id="password-form" role="dialog" aria-modal="true" aria-labelledby="password-title">
+      <h2 id="password-title">Change password</h2>
+      <p id="password-intro" hidden>You signed in with a temporary password. Choose your own to continue.</p>
+      <input type="text" name="username" autocomplete="username" id="password-username" hidden>
+      <div id="password-current-wrap">
+        <label for="password-current">Current password</label>
+        <input id="password-current" type="password" autocomplete="current-password">
+      </div>
+      <label for="password-next">New password</label>
+      <input id="password-next" type="password" autocomplete="new-password" minlength="10" required>
+      <p class="hint">At least 10 characters. Your other devices will be signed out.</p>
+      <p class="form-error" id="password-error" role="alert"></p>
+      <button class="sheet-btn primary" type="submit">Save</button>
+      <button class="sheet-btn" type="button" id="password-cancel" data-close>Cancel</button>
+    </form>
+  </div>
+
+  <!-- Admin -->
+  <div class="sheet-backdrop" id="admin-sheet" hidden>
+    <div class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="admin-title">
+      <h2 id="admin-title">Admin</h2>
+      <p class="warning" id="admin-warning" hidden>ADMIN_PASSWORD is still set in Vercel. Delete it there now that your account exists.</p>
+
+      <h3>Invites</h3>
+      <div class="inline">
+        <select id="invite-days" aria-label="Invite expiry">
+          <option value="0">Never expires</option>
+          <option value="1">Expires in 1 day</option>
+          <option value="7" selected>Expires in 7 days</option>
+          <option value="30">Expires in 30 days</option>
+        </select>
+        <button class="pill" type="button" id="invite-create">New invite</button>
+      </div>
+      <div class="code-row" id="invite-new" hidden><code id="invite-code"></code><button class="pill" type="button" id="invite-copy">Copy</button></div>
+      <p class="hint" id="invite-new-hint" hidden>Codes are shown once. Send it to the person you're inviting.</p>
+      <div class="rows" id="invite-rows"></div>
+
+      <h3>Users</h3>
+      <div class="rows" id="user-rows"></div>
+      <div class="code-row" id="reset-new" hidden><code id="reset-code"></code><button class="pill" type="button" id="reset-copy">Copy</button></div>
+      <p class="hint" id="reset-hint" hidden></p>
+
+      <button class="sheet-btn" type="button" data-close>Close</button>
+    </div>
+  </div>
+
+  <script src="/deck/app.js" type="module"></script>
+</body>
+</html>

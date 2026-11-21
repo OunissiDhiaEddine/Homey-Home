@@ -6,7 +6,7 @@ import { hashPassword } from "../lib/secrets.js";
 
 const db = await startMemoryRedis();
 const fake = await startFakeRm4({ port: 0, log: () => {}, learnDelayMs: 100 });
-const env = { KV_REST_API_URL: db.url, KV_REST_API_TOKEN: db.token, HOME_USERS: "sara" };
+const env = { KV_REST_API_URL: db.url, KV_REST_API_TOKEN: db.token, HOME_USERS: "sara", DATA_KEY: "k".repeat(44) };
 Object.assign(process.env, env);
 
 const routes = {
@@ -50,29 +50,35 @@ test.after(() => {
 
 let admin;
 
-test("signs in with a HomeyDeck account; only the admin and HOME_USERS get in", async () => {
-  assert.equal((await call("session")).status, 401);
+test("one sign-in for both pages; only the admin and HOME_USERS get the room controls", async () => {
+  assert.equal((await call("home")).status, 401);
   assert.equal((await call("session", { action: "login", username: "dhia", password: "wrong-password" })).status, 401);
+
+  // Any HomeyDeck account signs in (for its PCs), but the room is off limits.
   const friend = await call("session", { action: "login", username: "friend", password: "friendpassword" });
-  assert.equal(friend.status, 403);
-  assert.equal(friend.data.code, "no_access");
+  assert.equal(friend.status, 200);
+  assert.equal((await call("session", undefined, friend.cookie)).data.homeAccess, false);
+  const refused = await call("home", undefined, friend.cookie);
+  assert.equal(refused.status, 403);
+  assert.equal(refused.data.code, "no_access");
+
   const sara = await call("session", { action: "login", username: "SARA", password: "sarapassword1" });
   assert.equal(sara.status, 200);
+  assert.equal((await call("home", undefined, sara.cookie)).status, 200);
 
   const login = await call("session", { action: "login", username: "dhia", password: "adminpassword" });
   assert.equal(login.status, 200);
-  assert.match(login.cookie, /^hh_session=/);
+  assert.match(login.cookie, /^hd_session=/);
   admin = login.cookie;
-  // The session joins HomeyDeck's list, so "sign out everywhere" there ends it here too.
   assert.equal(db.db.run(["SMEMBERS", "sessions:adminuid0000000000000A"]).result.length, 1);
+  assert.equal((await call("session", undefined, admin)).data.homeAccess, true);
 
-  const me = await call("session", undefined, admin);
+  const me = await call("home", undefined, admin);
   assert.equal(me.status, 200);
   assert.equal(me.data.user.name, "Dhia");
   assert.equal(me.data.home.room, "My Room");
   assert.equal(me.data.home.remotes[0].category, "light");
   assert.equal(me.data.device.configured, false);
-  assert.equal(me.data.homeydeckUrl, "https://homeydeck.vercel.app");
 });
 
 test("refuses cross-site posts", async () => {
@@ -110,7 +116,7 @@ test("re-authenticates when the device forgot the session", async () => {
 });
 
 test("records a button, sends it, and edits the remote", async () => {
-  const me = await call("session", undefined, admin);
+  const me = await call("home", undefined, admin);
   const light = me.data.home.remotes[0];
   const on = light.buttons[0];
 
@@ -187,7 +193,7 @@ test("Siri & Shortcuts: tokens, presses by name, scenes, climate", async () => {
   assert.equal(made.data.tokens.length, 1);
   assert.ok(!JSON.stringify(made.data.tokens).includes(token.split(".")[1]), "the secret isn't listed");
 
-  const home = (await call("session", undefined, admin)).data.home;
+  const home = (await call("home", undefined, admin)).data.home;
   const light = home.remotes[0];
 
   // Record "Off" so the light can be switched both ways.
@@ -201,7 +207,7 @@ test("Siri & Shortcuts: tokens, presses by name, scenes, climate", async () => {
   assert.equal(r.text, "Room light is off.");
   r = await siri(token, { press: "On" }); // the remote can be left out
   assert.equal(r.text, "Room light is on.");
-  assert.equal((await call("session", undefined, admin)).data.lights[light.id], "on", "the app sees what Siri did");
+  assert.equal((await call("home", undefined, admin)).data.lights[light.id], "on", "the app sees what Siri did");
 
   r = await siri(token, { press: ["Room light / Off", "Room light / On"] });
   assert.equal(r.text, "Done: Room light Off, then Room light On.");
@@ -229,5 +235,6 @@ test("Siri & Shortcuts: tokens, presses by name, scenes, climate", async () => {
 
 test("signing out ends the session", async () => {
   await call("session", { action: "logout" }, admin);
+  assert.equal((await call("home", undefined, admin)).status, 401);
   assert.equal((await call("session", undefined, admin)).status, 401);
 });

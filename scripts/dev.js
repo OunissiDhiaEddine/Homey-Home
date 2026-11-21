@@ -1,6 +1,6 @@
 // Local server for working on Homey Home without Vercel:
 //   npm run dev            (FAKE_RM4=1 npm run dev also starts a pretend RM4 Pro)
-// It serves public/ and the same API routes. Unless KV_REST_API_URL /
+// It serves public/ (Homey Home at /, HomeyDeck at /deck/) and the same API routes. Unless KV_REST_API_URL /
 // KV_REST_API_TOKEN point at a real database, it uses a throwaway in-memory
 // one with a ready-made admin account: dev / devpassword (DEV_PASSWORD).
 import http from "node:http";
@@ -24,6 +24,8 @@ if (!process.env.KV_REST_API_URL) {
   db.db.run(["HSET", `u:${uid}`, "name", "dev", "role", "admin", "pw", await hashPassword(password), "created", Date.now()]);
   console.log(`In-memory database with an admin account: dev / ${password}`);
 }
+// HomeyDeck seals PCs' wake details with DATA_KEY; a throwaway one is fine locally.
+process.env.DATA_KEY ||= "dev-data-key-".padEnd(44, "x");
 
 if (process.env.FAKE_RM4) {
   const fake = await startFakeRm4({ port: Number(process.env.FAKE_RM4_PORT || 8780) });
@@ -56,7 +58,8 @@ http
       res.writeHead(response.status, headers);
       return res.end(Buffer.from(await response.arrayBuffer()));
     }
-    const file = path.join(pub, path.normalize(url.pathname === "/" ? "/index.html" : url.pathname));
+    if (url.pathname === "/deck") return res.writeHead(308, { Location: "/deck/" }).end();
+    const file = path.join(pub, path.normalize(url.pathname.endsWith("/") ? `${url.pathname}index.html` : url.pathname));
     if (!file.startsWith(pub)) return res.writeHead(404).end();
     try {
       const data = await fs.readFile(file);
