@@ -1,6 +1,6 @@
 // Caches the app shell so Homey Home opens instantly and works as an installed
 // app. API calls always go to the network. Bump VERSION when shell files change.
-const VERSION = "homeyhome-1";
+const VERSION = "homeyhome-2";
 const SHELL = ["/", "/app.css", "/app.js", "/manifest.webmanifest", "/icon-192.png", "/apple-touch-icon.png", "/favicon.png"];
 
 self.addEventListener("install", (event) => {

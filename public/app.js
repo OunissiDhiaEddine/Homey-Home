@@ -101,24 +101,13 @@ function el(tag, attrs = {}, ...children) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function storageGet(key) {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-function storageSet(key, value) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {}
-}
-
 // --- state and API -------------------------------------------------------------
 
 const state = {
   user: null,
   home: null,
+  lights: {}, // light remote id → "on" | "off", kept by the server
+  tokens: [],
   device: null,
   homeydeckUrl: "https://homeydeck.vercel.app",
   climate: null,
@@ -197,6 +186,7 @@ async function loadSession() {
 function applySession(data) {
   state.user = data.user;
   state.home = data.home;
+  state.lights = data.lights ?? {};
   state.device = data.device;
   state.homeydeckUrl = data.homeydeckUrl || state.homeydeckUrl;
   for (const id of ["deck-link", "settings-deck", "auth-deck-link"]) $(id).href = state.homeydeckUrl;
@@ -373,11 +363,16 @@ async function press(remote, button, key) {
   key.classList.remove("sent", "failed");
   navigator.vibrate?.(10);
   try {
-    await api("/api/send", { button: button.id });
+    const res = await api("/api/send", { button: button.id });
     key.classList.add("sent");
     setTimeout(() => key.classList.remove("sent"), 450);
     if (state.deviceState !== "online" && state.device?.configured) setDeviceState("online");
-    if (remote.category === "light") trackLight(remote, button);
+    if (res.light && res.light !== state.lights[remote.id]) {
+      state.lights[remote.id] = res.light;
+      renderPinned();
+      renderRemoteList();
+      renderLightGlow();
+    }
   } catch (err) {
     key.classList.add("failed");
     setTimeout(() => key.classList.remove("failed"), 1500);
@@ -386,22 +381,8 @@ async function press(remote, button, key) {
   }
 }
 
-// IR lights don't report back, so remember what the last button meant.
-const lightKey = (id) => `homeyhome.light.${id}`;
-const lightState = (id) => storageGet(lightKey(id));
-
-function trackLight(remote, button) {
-  const name = button.name.toLowerCase();
-  let next = null;
-  if (/\boff\b/.test(name)) next = "off";
-  else if (/\bon\b/.test(name) || /bright|warm|cool|night/.test(name)) next = "on";
-  else if (button.icon === "power" || /power|toggle/.test(name)) next = lightState(remote.id) === "on" ? "off" : "on";
-  if (!next) return;
-  storageSet(lightKey(remote.id), next);
-  renderPinned();
-  renderRemoteList();
-  renderLightGlow();
-}
+// IR lights don't report back; the server remembers what the last button meant.
+const lightState = (id) => state.lights[id] ?? null;
 
 function renderLightGlow() {
   const anyOn = state.home?.remotes.some((r) => r.category === "light" && r.pinned && lightState(r.id) === "on");
@@ -421,7 +402,10 @@ function stopClimate() {
   state.climateTimer = null;
 }
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && state.user) refreshClimate();
+  if (document.visibilityState !== "visible" || !state.user) return;
+  refreshClimate();
+  // Siri may have pressed something while the app was away.
+  api("/api/session").then((data) => applySession(data)).catch(() => {});
 });
 $("temp-tile").addEventListener("click", () => refreshClimate(true));
 $("hum-tile").addEventListener("click", () => refreshClimate(true));
@@ -692,6 +676,17 @@ $("button-copy").addEventListener("click", async () => {
     toast(e.message || "Couldn't copy.");
   }
 });
+$("button-siri").addEventListener("click", async () => {
+  const remote = findRemote(state.button.remote);
+  const button = findButton(remote, state.button.button);
+  const spec = `${remote.name} / ${button.name}`;
+  try {
+    await navigator.clipboard.writeText(spec);
+    toast(`Copied “${spec}”. Paste it as the press value in your Shortcut.`, "info");
+  } catch {
+    toast(`Use “${spec}” as the press value in your Shortcut.`, "info");
+  }
+});
 $("button-left").addEventListener("click", () => homeAction({ action: "button_move", ...state.button, dir: "left" }).catch((e) => toast(e.message)));
 $("button-right").addEventListener("click", () => homeAction({ action: "button_move", ...state.button, dir: "right" }).catch((e) => toast(e.message)));
 $("button-delete").addEventListener("click", async () => {
@@ -912,9 +907,74 @@ function openSettings() {
   $("room-input").value = state.home?.room ?? "";
   $("me-name").textContent = state.user?.name ?? "";
   $("dev-error").textContent = "";
+  $("siri-url").textContent = `${location.origin}/api/shortcut`;
+  $("token-new").hidden = true;
   renderDeviceInfo();
   openSheet("settings-sheet");
+  loadTokens();
 }
+
+// --- Siri & Shortcuts tokens ---------------------------------------------------
+
+async function loadTokens() {
+  try {
+    state.tokens = (await api("/api/tokens", { action: "list" })).tokens;
+    renderTokens();
+  } catch (e) {
+    $("token-error").textContent = e.message;
+  }
+}
+
+function renderTokens() {
+  const host = $("token-list");
+  host.replaceChildren();
+  for (const t of state.tokens) {
+    host.append(
+      el(
+        "div",
+        { class: "row" },
+        el("div", { class: "row-text" }, el("strong", {}, t.name), el("span", { class: "hint" }, t.lastUsed ? `Last used ${ago(t.lastUsed)}` : `Made ${ago(t.created)}, not used yet`)),
+        el("button", { class: "pill quiet", type: "button", onclick: () => revokeToken(t) }, "Revoke"),
+      ),
+    );
+  }
+  if (!state.tokens.length) host.append(el("p", { class: "hint" }, "No tokens yet. Make one for your iPhone's Shortcuts."));
+}
+
+async function revokeToken(t) {
+  if (!confirm(`Revoke “${t.name}”? Shortcuts using it stop working.`)) return;
+  try {
+    state.tokens = (await api("/api/tokens", { action: "revoke", id: t.id })).tokens;
+    renderTokens();
+  } catch (e) {
+    $("token-error").textContent = e.message;
+  }
+}
+
+$("token-create").addEventListener("click", async () => {
+  $("token-error").textContent = "";
+  try {
+    const data = await api("/api/tokens", { action: "create", name: $("token-name").value.trim() || "iPhone Shortcuts" });
+    state.tokens = data.tokens;
+    renderTokens();
+    $("token-value").textContent = data.token;
+    $("token-new").hidden = false;
+    $("token-name").value = "";
+  } catch (e) {
+    $("token-error").textContent = e.message;
+  }
+});
+
+async function copyText(textValue, label) {
+  try {
+    await navigator.clipboard.writeText(textValue);
+    toast(`${label} copied.`, "info");
+  } catch {
+    toast("Couldn't copy; select it and copy by hand.");
+  }
+}
+$("token-copy").addEventListener("click", () => copyText(`Bearer ${$("token-value").textContent}`, "Authorization value"));
+$("siri-url-copy").addEventListener("click", () => copyText($("siri-url").textContent, "URL"));
 
 function ago(ms) {
   const s = Math.round((Date.now() - ms) / 1000);

@@ -16,6 +16,8 @@ const routes = {
   climate: await import("../api/climate.js"),
   learn: await import("../api/learn.js"),
   send: await import("../api/send.js"),
+  tokens: await import("../api/tokens.js"),
+  shortcut: await import("../api/shortcut.js"),
 };
 
 const ORIGIN = "https://homey-home.test";
@@ -160,6 +162,69 @@ test("learns RF in two steps", async () => {
   }
   assert.equal(res.kind, "rf");
   await call("learn", { action: "cancel" }, admin);
+});
+
+async function siri(token, body, { form = false } = {}) {
+  const headers = { authorization: `Bearer ${token}` };
+  let payload;
+  if (form) {
+    headers["content-type"] = "application/x-www-form-urlencoded";
+    payload = new URLSearchParams(body).toString();
+  } else {
+    headers["content-type"] = "application/json";
+    payload = JSON.stringify(body);
+  }
+  const res = await routes.shortcut.POST(new Request(`${ORIGIN}/api/shortcut`, { method: "POST", headers, body: payload }));
+  return { status: res.status, text: (await res.text()).trim() };
+}
+
+test("Siri & Shortcuts: tokens, presses by name, scenes, climate", async () => {
+  assert.equal((await siri("nonsense", { press: "On" })).status, 401);
+
+  const made = await call("tokens", { action: "create", name: "iPhone" }, admin);
+  assert.equal(made.status, 200);
+  const token = made.data.token;
+  assert.equal(made.data.tokens.length, 1);
+  assert.ok(!JSON.stringify(made.data.tokens).includes(token.split(".")[1]), "the secret isn't listed");
+
+  const home = (await call("session", undefined, admin)).data.home;
+  const light = home.remotes[0];
+
+  // Record "Off" so the light can be switched both ways.
+  const off = light.buttons.find((b) => b.name === "Off");
+  const on = light.buttons.find((b) => b.name === "On");
+  const onCode = (await call("home", { action: "button_export", remote: light.id, button: on.id }, admin)).data.code;
+  await call("home", { action: "button_code", remote: light.id, button: off.id, code: onCode }, admin);
+
+  let r = await siri(token, { press: "room light / off" });
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.text, "Room light is off.");
+  r = await siri(token, { press: "On" }); // the remote can be left out
+  assert.equal(r.text, "Room light is on.");
+  assert.equal((await call("session", undefined, admin)).data.lights[light.id], "on", "the app sees what Siri did");
+
+  r = await siri(token, { press: ["Room light / Off", "Room light / On"] });
+  assert.equal(r.text, "Done: Room light Off, then Room light On.");
+
+  r = await siri(token, { press: "Room light / Brighter" });
+  assert.equal(r.status, 404);
+  assert.match(r.text, /Nothing is recorded/);
+
+  r = await siri(token, { press: "Kitchen / On" });
+  assert.equal(r.status, 404);
+  assert.match(r.text, /no remote called “Kitchen”/);
+
+  r = await siri(token, { press: "Room light / On" }, { form: true });
+  assert.equal(r.text, "Room light is on.");
+
+  r = await siri(token, { get: "climate" });
+  assert.match(r.text, /^My Room is \d+\.\d °C with \d+ % humidity\.$/);
+
+  const listed = await call("tokens", { action: "list" }, admin);
+  assert.ok(listed.data.tokens[0].lastUsed);
+
+  await call("tokens", { action: "revoke", id: listed.data.tokens[0].id }, admin);
+  assert.equal((await siri(token, { press: "On" })).status, 401);
 });
 
 test("signing out ends the session", async () => {

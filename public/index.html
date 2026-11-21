@@ -152,6 +152,7 @@
       <input id="button-name" maxlength="40">
       <label>Icon</label>
       <div class="icon-grid" id="button-icons"></div>
+      <button class="link-btn" id="button-siri" type="button">Copy name for Siri &amp; Shortcuts</button>
       <div class="btn-row">
         <button class="sheet-btn" id="button-left">Move left</button>
         <button class="sheet-btn" id="button-right">Move right</button>
@@ -233,6 +234,21 @@
         <div><label for="room-input">Name</label><input id="room-input" maxlength="40"></div>
         <div><label>&nbsp;</label><button class="sheet-btn" id="room-save">Save</button></div>
       </div>
+
+      <h3>Siri &amp; Shortcuts</h3>
+      <p class="hint">In the iPhone Shortcuts app, add <strong>Get Contents of URL</strong>: method POST, a header <code>Authorization</code> with the value below, and a JSON body with <code>press</code> = <code>Room light / On</code> (or <code>get</code> = <code>climate</code>, then add <strong>Speak Text</strong>). Name the Shortcut what you'll say to Siri.</p>
+      <div class="code-row"><code id="siri-url"></code><button class="pill quiet" type="button" id="siri-url-copy">Copy</button></div>
+      <div class="rows" id="token-list"></div>
+      <div class="field-row">
+        <div><label for="token-name">New token name</label><input id="token-name" maxlength="40" placeholder="iPhone Shortcuts"></div>
+        <div><label>&nbsp;</label><button class="sheet-btn" id="token-create" type="button">Make token</button></div>
+      </div>
+      <div class="info-box ok" id="token-new" hidden>
+        <strong>Copy this now: it's shown only once.</strong>
+        <div class="code-row"><code id="token-value"></code><button class="pill" type="button" id="token-copy">Copy</button></div>
+        <span>The Copy button copies <code>Bearer …</code>, ready for the Authorization header. Anyone with it can press your buttons, so keep it in the Shortcut only.</span>
+      </div>
+      <p class="form-error" id="token-error" role="alert"></p>
 
       <h3>Account</h3>
       <div class="info-box"><span>Signed in as <strong id="me-name"></strong></span><span>Your HomeyDeck account. Change your password or sign out everywhere in HomeyDeck.</span></div>

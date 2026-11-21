@@ -514,3 +514,12 @@ code { font-size: 13px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* --- lists (tokens) --- */
+.rows { display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.045); }
+.row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row-text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.code-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); }
+.code-row code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 13px; user-select: all; color: var(--text); }
+.sheet .hint code { font-size: 12px; color: var(--muted); }

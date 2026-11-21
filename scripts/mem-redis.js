@@ -58,6 +58,7 @@ export function memoryRedis() {
     HGET: ([k, f]) => hashOf(k).get(f) ?? null,
     HMGET: ([k, ...fs]) => fs.map((f) => hashOf(k).get(f) ?? null),
     HGETALL: ([k]) => [...hashOf(k)].flat(),
+    HLEN: ([k]) => hashOf(k).size,
     HDEL([k, ...fs]) {
       const h = hashOf(k);
       const n = fs.filter((f) => h.delete(f)).length;

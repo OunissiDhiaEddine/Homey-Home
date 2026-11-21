@@ -6,6 +6,7 @@ A tiny Home Assistant for one room, running only on Vercel. There's no VPS and n
 - **Room light:** a card on the dashboard with buttons you set up yourself (On, Off, Brighter, Dimmer, or anything else).
 - **Record anything:** remotes by type (TV, AC, light, fan, speaker, projector, TV box, other), each starting with the usual buttons. Record them from your real remote (infrared, or 433/315 MHz radio), or paste Broadlink codes from Home Assistant/SmartIR.
 - **Same login as HomeyDeck**, plus a button that jumps to HomeyDeck.
+- **Siri & Shortcuts:** "Hey Siri, light on", scenes, and "what's the temperature".
 
 ```
 phone (PWA) ──HTTPS──▶ Vercel function ──UDP over the internet──▶ your router (DDNS) ──port forward──▶ RM4 Pro :80
@@ -53,6 +54,36 @@ Optional environment variables:
 
 **Radio (RF) remotes** (433/315 MHz) take two steps: hold the remote's button down while the RM4 finds the frequency, then let go and press it once more.
 
+## Siri & Shortcuts
+
+Trigger any button, a whole scene, or ask for the temperature with Siri, using Apple's **Shortcuts** app. No extra app needed.
+
+**1. Make a token:** Homey Home → Settings → **Siri & Shortcuts** → **Make token**, then **Copy**. That copies `Bearer …`, ready for the header. It's shown only once. Revoke it there anytime.
+
+**2. Build the Shortcut** on your iPhone: Shortcuts → **+** → **Add Action** → **Get Contents of URL**, and tap **Show More**:
+
+| Setting | Value |
+|---|---|
+| URL | `https://homey-home.vercel.app/api/shortcut` |
+| Method | `POST` |
+| Headers | `Authorization` = the copied `Bearer …` value |
+| Request Body | **JSON**, one field (see below) |
+
+**3. Name the Shortcut** what you'll say: *"Light on"* → "Hey Siri, light on".
+
+What to put in the body:
+
+| Do this | Field | Value |
+|---|---|---|
+| Press one button | `press` (Text) | `Room light / On` |
+| Press several in order (a scene) | `press` (Array) | `Room light / Off`, `AC / Power`, `TV / Power` |
+| Press it a few times | add `repeat` (Number) | `3` |
+| Hear the temperature | `get` (Text) | `climate`, then add a **Speak Text** action after it |
+
+Names are `Remote / Button` as shown in the app, in any case. Every button's editor has **Copy name for Siri & Shortcuts**. You can leave the remote out when only one remote has a button with that name. Homey Home answers in one plain sentence ("Room light is on.", "My Room is 23.4 °C with 48 % humidity.", or what went wrong), so add **Show Result** or **Speak Text** if you want to hear it. Light changes made by Siri show up in the app.
+
+Ideas: put a scene on the Home Screen, or run one from **Automation** (e.g. "When I arrive home" → AC on, or "At 23:30" → Room light off).
+
 ## How the login works
 
 Homey Home reads HomeyDeck's accounts (`uname:*`, `u:*`) from the shared Redis and creates its own sessions (`sess:*`, cookie `hh_session`). Each session is added to HomeyDeck's `sessions:{uid}` list, so in HomeyDeck **Sign out everywhere**, a password change, or disabling the account also signs you out of Homey Home. Accounts and passwords are managed in HomeyDeck only. Homey Home never creates or changes them.
@@ -77,8 +108,8 @@ npm test              # protocol tests against the fake RM4 + API tests
 `npm run dev` without `:fake` uses your real RM4 if you set its address in Settings. Set `KV_REST_API_URL` / `KV_REST_API_TOKEN` to use a real database instead of the in-memory one.
 
 ```
-api/        Vercel functions: session, home (remotes and buttons), device, climate, learn, send, health
-lib/        broadlink.js (the UDP protocol), auth.js (HomeyDeck login), home.js, device.js, redis.js, http.js
+api/        Vercel functions: session, home (remotes and buttons), device, climate, learn, send, tokens, shortcut, health
+lib/        broadlink.js (the UDP protocol), auth.js (HomeyDeck login), shortcuts.js (Siri), home.js, device.js, redis.js, http.js
 public/     the PWA: index.html, app.js, app.css, sw.js, manifest, icons
 scripts/    dev server, in-memory Redis, fake RM4 Pro
 test/       node --test
