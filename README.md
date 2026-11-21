@@ -89,11 +89,11 @@ Ideas: put a scene on the Home Screen, or run one from **Automation** (e.g. "Whe
 
 ## HomeyDeck and the login
 
-The HomeyDeck web app is copied in unchanged apart from paths: its page lives in `public/deck/` (served at `/deck/`), and its API keeps its original routes (`/api/session`, `/api/pcs`, `/api/status`, `/api/command`, `/api/account`, `/api/admin`, `/api/health`, `/api/agent/*`), so paired agents and the Steam Deck plugin don't notice the move. Its source of truth is still the [HomeyDeck repo](https://github.com/OunissiDhiaEddine/HomeyDeck) (agent, Decky plugin, releases).
+The HomeyDeck web app is copied in unchanged apart from paths: its page lives in `public/deck/` (served at `/deck/`), and its API keeps its original routes (`/api/session`, `/api/pcs`, `/api/status`, `/api/command`, `/api/account`, `/api/admin`, `/api/health`, `/api/agent/*`), so the agents and the Steam Deck plugin work against it unchanged once they point at this site. Its source of truth is still the [HomeyDeck repo](https://github.com/OunissiDhiaEddine/HomeyDeck) (agent, Decky plugin, releases).
 
 There's one sign-in, HomeyDeck's (`POST /api/session`, cookie `hd_session`), for both pages. Every account can use the HomeyDeck page for its own PCs. Homey Home's room controls are only for the admin and `HOME_USERS`; anyone else who opens `/` is sent to `/deck/`. Invites, password changes, "sign out everywhere" and the admin page are on the HomeyDeck page (gear menu).
 
-If `homeydeck.vercel.app` is pointed at this project, its `/` redirects to `/deck/` (see `vercel.json`), so old bookmarks and installed HomeyDeck apps keep working.
+The old `homeydeck.vercel.app` project is paused. Agents and the Steam Deck plugin are paired with `homey-home.vercel.app` instead (re-pair from the HomeyDeck page: Add PC).
 
 ## Things to know
 

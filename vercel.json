@@ -15,17 +15,6 @@
       "source": "/deck",
       "destination": "/deck/",
       "permanent": true
-    },
-    {
-      "source": "/",
-      "has": [
-        {
-          "type": "host",
-          "value": "homeydeck.vercel.app"
-        }
-      ],
-      "destination": "/deck/",
-      "permanent": false
     }
   ],
   "rewrites": [
