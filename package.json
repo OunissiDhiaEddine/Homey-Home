@@ -1,0 +1,12 @@
+{
+  "name": "homey-home",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "dev:fake": "FAKE_RM4=1 node scripts/dev.js",
+    "fake-rm4": "node scripts/fake-rm4.js",
+    "test": "node --test test/*.test.js"
+  }
+}

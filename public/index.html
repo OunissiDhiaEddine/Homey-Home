@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Homey Home</title>
+  <meta name="description" content="Your room from anywhere: temperature, humidity, lights and remotes through a Broadlink RM4 Pro.">
+  <meta name="theme-color" content="#0d0f1a">
+  <meta name="color-scheme" content="dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Homey Home">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body data-view="loading" data-device="checking">
+  <div class="glow" aria-hidden="true"></div>
+
+  <!-- Sign in -->
+  <main class="auth" id="auth" hidden>
+    <div class="auth-brand">
+      <div class="orb"><div class="orb-glow"></div><div class="orb-ring" data-icon="house"></div></div>
+      <h1>Homey Home</h1>
+      <p>Your room, from anywhere.</p>
+    </div>
+
+    <section class="card notice" id="server-notice" hidden>
+      <div>
+        <h2>Finish setting up this server</h2>
+        <p id="server-notice-text"></p>
+      </div>
+    </section>
+
+    <form class="card form" id="login-form" autocomplete="on">
+      <h2>Sign in with HomeyDeck</h2>
+      <label for="login-name">Username</label>
+      <input id="login-name" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" required>
+      <label for="login-password">Password</label>
+      <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+      <p class="form-error" id="login-error" role="alert"></p>
+      <button class="sheet-btn primary" type="submit">Sign in</button>
+      <p class="hint center">Same account as HomeyDeck. Accounts and passwords are managed there.</p>
+      <a class="link-btn" id="auth-deck-link" href="https://homeydeck.vercel.app" rel="noopener">Open HomeyDeck</a>
+    </form>
+  </main>
+
+  <!-- The app -->
+  <div id="app" hidden>
+    <header class="bar">
+      <span class="brand"><span data-icon="house"></span>Homey Home</span>
+      <div class="bar-actions">
+        <a class="deck-link" id="deck-link" href="https://homeydeck.vercel.app" rel="noopener" aria-label="Open HomeyDeck">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-6v2h3v2H7v-2h3v-2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2v9h16V6H4Z"/></svg>
+          <span>HomeyDeck</span>
+        </a>
+        <button class="icon-btn" id="open-settings" aria-label="Settings" data-icon="gear"></button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="orb"><div class="orb-glow"></div><div class="orb-ring" data-icon="house"></div></div>
+        <h1 id="room-name">My Room</h1>
+        <p class="state"><span class="dot"></span><span id="device-state">Checking…</span></p>
+      </section>
+
+      <section class="card setup" id="setup-card" hidden>
+        <div>
+          <h2>Connect your RM4 Pro</h2>
+          <p>Add your DDNS address to start.</p>
+        </div>
+        <button class="pill" id="setup-open">Set up</button>
+      </section>
+
+      <section class="climate" id="climate">
+        <button class="reading temp" id="temp-tile" type="button" aria-label="Temperature, tap to refresh">
+          <span class="reading-label"><span data-icon="temp"></span>Temperature</span>
+          <span class="reading-value"><span id="temp-value">--</span><small>°C</small></span>
+          <span class="reading-note" id="temp-note"></span>
+        </button>
+        <button class="reading hum" id="hum-tile" type="button" aria-label="Humidity, tap to refresh">
+          <span class="reading-label"><span data-icon="drop"></span>Humidity</span>
+          <span class="reading-value"><span id="hum-value">--</span><small>%</small></span>
+          <span class="reading-note" id="hum-note"></span>
+        </button>
+      </section>
+
+      <section class="card history" id="history">
+        <div class="history-head">
+          <span id="history-range">Last 24 hours</span>
+          <span class="legend"><span class="lg-t">°C</span><span class="lg-h">%</span></span>
+        </div>
+        <svg class="spark" id="spark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <p class="hint center" id="history-hint"></p>
+      </section>
+
+      <div id="pinned"></div>
+
+      <div class="section-head"><h3>Remotes</h3></div>
+      <section class="remote-list" id="remote-list"></section>
+    </main>
+  </div>
+
+  <!-- A remote: its buttons, editing, settings -->
+  <div class="sheet-backdrop" id="remote-sheet" hidden>
+    <div class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="remote-title">
+      <div class="sheet-top">
+        <span class="cat-icon" id="remote-icon"></span>
+        <h2 id="remote-title">Remote</h2>
+        <button class="icon-btn small" id="remote-edit" aria-label="Edit buttons" data-icon="edit"></button>
+        <button class="icon-btn small" id="remote-close" aria-label="Close" data-icon="close"></button>
+      </div>
+      <p class="hint" id="remote-hint"></p>
+      <div class="pad" id="remote-pad"></div>
+      <div id="remote-settings" hidden>
+        <h3>Remote</h3>
+        <div class="stack">
+          <label for="remote-name">Name</label>
+          <input id="remote-name" maxlength="40">
+          <label>Type</label>
+          <div class="cat-grid" id="remote-cats"></div>
+          <label class="toggle-row" for="remote-pinned"><span>Show on the dashboard</span><input type="checkbox" id="remote-pinned"></label>
+          <div class="btn-row">
+            <button class="sheet-btn" id="remote-up">Move up</button>
+            <button class="sheet-btn" id="remote-down">Move down</button>
+          </div>
+          <button class="sheet-btn danger-quiet" id="remote-delete">Delete this remote</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A button: name, icon, code -->
+  <div class="sheet-backdrop" id="button-sheet" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="button-title">
+      <div class="sheet-top">
+        <h2 id="button-title">Button</h2>
+        <button class="icon-btn small" id="button-close" aria-label="Close" data-icon="close"></button>
+      </div>
+      <div class="info-box" id="button-status"></div>
+      <div class="btn-row three">
+        <button class="sheet-btn primary" id="button-record"><span data-icon="rec"></span>Record</button>
+        <button class="sheet-btn" id="button-test"><span data-icon="send"></span>Test</button>
+        <button class="sheet-btn" id="button-copy"><span data-icon="copy"></span>Copy</button>
+      </div>
+      <label for="button-name">Name</label>
+      <input id="button-name" maxlength="40">
+      <label>Icon</label>
+      <div class="icon-grid" id="button-icons"></div>
+      <div class="btn-row">
+        <button class="sheet-btn" id="button-left">Move left</button>
+        <button class="sheet-btn" id="button-right">Move right</button>
+      </div>
+      <button class="sheet-btn danger-quiet" id="button-delete">Delete this button</button>
+    </div>
+  </div>
+
+  <!-- Recording a code -->
+  <div class="sheet-backdrop" id="record-sheet" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="record-title">
+      <div class="sheet-top">
+        <h2 id="record-title">Record</h2>
+        <button class="icon-btn small" id="record-close" aria-label="Close" data-icon="close"></button>
+      </div>
+      <div class="seg" role="group" aria-label="What kind of remote">
+        <button type="button" data-mode="ir" aria-pressed="true">Infrared</button>
+        <button type="button" data-mode="rf" aria-pressed="false">Radio (RF)</button>
+        <button type="button" data-mode="paste" aria-pressed="false">Paste code</button>
+      </div>
+      <div class="rec-stage" id="rec-stage" data-state="idle">
+        <div class="rec-orb"><div class="core" id="rec-core"></div></div>
+        <p class="rec-title" id="rec-title">Ready</p>
+        <p class="rec-text" id="rec-text"></p>
+        <span class="rec-count" id="rec-count"></span>
+      </div>
+      <div id="paste-box" hidden>
+        <label for="paste-code">Broadlink code (base64 or hex, like Home Assistant uses)</label>
+        <textarea id="paste-code" spellcheck="false" placeholder="JgBQAAABKZMSEhI3EhIS…"></textarea>
+      </div>
+      <p class="form-error" id="rec-error" role="alert"></p>
+      <button class="sheet-btn primary" id="rec-start">Start recording</button>
+      <div class="btn-row" id="rec-done" hidden>
+        <button class="sheet-btn" id="rec-test"><span data-icon="send"></span>Test it</button>
+        <button class="sheet-btn primary" id="rec-save">Save</button>
+      </div>
+      <button class="link-btn" id="rec-again" hidden>Record again</button>
+    </div>
+  </div>
+
+  <!-- Adding a remote -->
+  <div class="sheet-backdrop" id="add-sheet" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="add-title">
+      <h2 id="add-title">Add a remote</h2>
+      <p>Pick what it controls. It starts with the usual buttons, each ready to record.</p>
+      <div class="cat-grid" id="add-cats"></div>
+      <label for="add-name">Name</label>
+      <input id="add-name" maxlength="40" placeholder="TV">
+      <label class="toggle-row" for="add-blank"><span>Start with no buttons</span><input type="checkbox" id="add-blank"></label>
+      <p class="form-error" id="add-error" role="alert"></p>
+      <button class="sheet-btn primary" id="add-create">Add remote</button>
+      <button class="sheet-btn" id="add-cancel">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="sheet-backdrop" id="settings-sheet" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="sheet-top">
+        <h2 id="settings-title">Settings</h2>
+        <button class="icon-btn small" id="settings-close" aria-label="Close" data-icon="close"></button>
+      </div>
+
+      <h3>RM4 Pro</h3>
+      <div class="field-row">
+        <div><label for="dev-host">Address</label><input id="dev-host" placeholder="myhome.mywire.org" autocapitalize="off" spellcheck="false" inputmode="url"></div>
+        <div><label for="dev-port">UDP port</label><input id="dev-port" inputmode="numeric" placeholder="80"></div>
+      </div>
+      <div class="info-box" id="dev-info" hidden></div>
+      <p class="form-error" id="dev-error" role="alert"></p>
+      <div class="btn-row">
+        <button class="sheet-btn primary" id="dev-save">Save &amp; test</button>
+        <button class="sheet-btn" id="dev-test">Test again</button>
+      </div>
+      <p class="hint">Homey Home talks to the RM4 from Vercel over the internet. On your router, forward <strong>UDP</strong> (not TCP) on this port to the RM4's local IP, port 80, and give the RM4 a fixed IP (DHCP reservation).</p>
+
+      <h3>Room</h3>
+      <div class="field-row">
+        <div><label for="room-input">Name</label><input id="room-input" maxlength="40"></div>
+        <div><label>&nbsp;</label><button class="sheet-btn" id="room-save">Save</button></div>
+      </div>
+
+      <h3>Account</h3>
+      <div class="info-box"><span>Signed in as <strong id="me-name"></strong></span><span>Your HomeyDeck account. Change your password or sign out everywhere in HomeyDeck.</span></div>
+      <div class="btn-row">
+        <a class="sheet-btn" id="settings-deck" href="https://homeydeck.vercel.app" rel="noopener">HomeyDeck</a>
+        <button class="sheet-btn danger-quiet" id="sign-out">Sign out</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" hidden><span id="toast-text"></span><button class="icon-btn" id="toast-close" aria-label="Dismiss" data-icon="close"></button></div>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>

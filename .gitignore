@@ -1,0 +1,5 @@
+.DS_Store
+.claude/launch.json
+.env*
+.vercel/
+node_modules/
