@@ -2,7 +2,7 @@
   "name": "homey-home",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": { "node": "22.x" },
   "scripts": {
     "dev": "node scripts/dev.js",
     "dev:fake": "FAKE_RM4=1 node scripts/dev.js",
