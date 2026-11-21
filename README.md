@@ -117,7 +117,8 @@ npm test              # protocol tests against the fake RM4 + API tests; HomeyDe
 `npm run dev` without `:fake` uses your real RM4 if you set its address in Settings. Set `KV_REST_API_URL` / `KV_REST_API_TOKEN` to use a real database instead of the in-memory one.
 
 ```
-api/        Homey Home: home, device, climate, learn, send, tokens, shortcut
+api/        home.js: all of Homey Home's routes in one function (vercel.json rewrites
+            /api/device, climate, learn, send, tokens, shortcut to it; Hobby allows 12 functions)
             HomeyDeck: session, account, admin, pcs, status, command, health, agent/*
 lib/        Homey Home: broadlink.js (the UDP protocol), auth.js, access.js, home.js, device.js, shortcuts.js (Siri)
             HomeyDeck: accounts.js, pcs.js, wol.js; shared: redis.js, http.js, secrets.js

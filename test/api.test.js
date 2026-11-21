@@ -9,15 +9,17 @@ const fake = await startFakeRm4({ port: 0, log: () => {}, learnDelayMs: 100 });
 const env = { KV_REST_API_URL: db.url, KV_REST_API_TOKEN: db.token, HOME_USERS: "sara", DATA_KEY: "k".repeat(44) };
 Object.assign(process.env, env);
 
+// Homey Home's routes all live in api/home.js (vercel.json rewrites them there).
+const home = await import("../api/home.js");
 const routes = {
   session: await import("../api/session.js"),
-  home: await import("../api/home.js"),
-  device: await import("../api/device.js"),
-  climate: await import("../api/climate.js"),
-  learn: await import("../api/learn.js"),
-  send: await import("../api/send.js"),
-  tokens: await import("../api/tokens.js"),
-  shortcut: await import("../api/shortcut.js"),
+  home,
+  device: home,
+  climate: home,
+  learn: home,
+  send: home,
+  tokens: home,
+  shortcut: home,
 };
 
 const ORIGIN = "https://homey-home.test";
@@ -79,6 +81,13 @@ test("one sign-in for both pages; only the admin and HOME_USERS get the room con
   assert.equal(me.data.home.room, "My Room");
   assert.equal(me.data.home.remotes[0].category, "light");
   assert.equal(me.data.device.configured, false);
+});
+
+test("Homey Home's routes share one function, by path or by ?route= after a rewrite", async () => {
+  const viaRewrite = await home.GET(new Request(`${ORIGIN}/api/home?route=climate`, { headers: { host: "homey-home.test" } }));
+  assert.equal(viaRewrite.status, 401); // reached the climate route, which wants a session
+  assert.equal((await home.GET(new Request(`${ORIGIN}/api/nope`))).status, 404);
+  assert.equal((await home.GET(new Request(`${ORIGIN}/api/send`))).status, 405);
 });
 
 test("refuses cross-site posts", async () => {

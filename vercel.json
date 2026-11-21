@@ -28,6 +28,12 @@
       "permanent": false
     }
   ],
+  "rewrites": [
+    {
+      "source": "/api/:route(device|climate|send|learn|tokens|shortcut)",
+      "destination": "/api/home?route=:route"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

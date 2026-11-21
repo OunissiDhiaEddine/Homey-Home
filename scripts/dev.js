@@ -38,8 +38,10 @@ http
   .createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host ?? "localhost"}`);
     if (url.pathname.startsWith("/api/")) {
-      // The same file-based routing as Vercel: /api/climate → api/climate.js.
-      const file = path.join(rootDir, path.normalize(url.pathname) + ".js");
+      // The same file-based routing as Vercel (/api/agent/poll → api/agent/poll.js),
+      // plus vercel.json's rewrite of Homey Home's routes into api/home.js.
+      const shared = /^\/api\/(device|climate|send|learn|tokens|shortcut)$/.test(url.pathname);
+      const file = path.join(rootDir, shared ? "api/home.js" : path.normalize(url.pathname) + ".js");
       let mod;
       try {
         mod = await import(pathToFileURL(file));
