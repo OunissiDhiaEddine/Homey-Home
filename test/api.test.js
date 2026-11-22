@@ -113,7 +113,7 @@ test("sets up the device and reads the climate", async () => {
   assert.equal(c.data.online, true);
   assert.equal(c.data.sensor, true);
   assert.ok(c.data.temperature > 20);
-  assert.equal(c.data.history.length, 1);
+  assert.equal(c.data.history, undefined, "no climate history any more");
   const cached = await call("climate", undefined, admin);
   assert.equal(cached.data.cached, true);
 });

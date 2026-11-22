@@ -193,21 +193,8 @@ body[data-device="none"] .dot { background: var(--off); }
 .reading-note { font-size: 13px; color: var(--c); font-weight: 600; min-height: 18px; }
 body[data-device="offline"] .reading-value, .reading.stale .reading-value { color: var(--faint); }
 
-.history { flex-direction: column; align-items: stretch; gap: 8px; padding: 14px 16px; }
-.history-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; color: var(--faint); }
-.history-head strong { color: var(--muted); font-weight: 600; }
-.legend { display: flex; gap: 12px; }
-.legend span { display: inline-flex; align-items: center; gap: 5px; }
-.lg-t { --c: var(--temp); }
-.lg-h { --c: var(--hum); }
 .stack { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 a.sheet-btn { text-decoration: none; }
-.legend span::before { content: ""; width: 10px; height: 3px; border-radius: 2px; background: var(--c); }
-.spark { width: 100%; height: 64px; display: block; }
-.spark .t { stroke: var(--temp); }
-.spark .h { stroke: var(--hum); }
-.spark path { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.history .hint { text-align: center; }
 
 /* --- remotes on the dashboard --- */
 

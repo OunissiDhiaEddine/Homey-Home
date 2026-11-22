@@ -458,51 +458,6 @@ function renderClimate() {
   $("hum-value").textContent = has ? Math.round(c.humidity) : "--";
   $("temp-note").textContent = has ? tempNote(c.temperature) : c?.online && c.sensor === false ? "No sensor" : "";
   $("hum-note").textContent = has ? humNote(c.humidity) : c?.online && c.sensor === false ? "Plug in the HTS2 cable" : "";
-  renderHistory(c?.history ?? []);
-}
-
-function renderHistory(all) {
-  const since = Date.now() - 24 * 3600_000;
-  const pts = all.filter((p) => p.at >= since);
-  const svg = $("spark");
-  svg.replaceChildren();
-  const hint = $("history-hint");
-  if (pts.length < 2) {
-    $("history-range").textContent = "Last 24 hours";
-    hint.textContent = "The graph fills in while Homey Home is open: one reading every 5 minutes.";
-    hint.hidden = false;
-    svg.toggleAttribute("hidden", true);
-    return;
-  }
-  hint.hidden = true;
-  svg.toggleAttribute("hidden", false);
-  const ts = pts.map((p) => p.t);
-  const hs = pts.map((p) => p.h);
-  const t0 = pts[0].at;
-  const span = Math.max(pts.at(-1).at - t0, 1);
-  const line = (vals) => {
-    let lo = Math.min(...vals);
-    let hi = Math.max(...vals);
-    if (hi - lo < 1) [lo, hi] = [lo - 0.5, hi + 0.5];
-    // Split into segments at gaps longer than 20 minutes (the app was closed).
-    let d = "";
-    pts.forEach((p, i) => {
-      const x = ((p.at - t0) / span) * 300;
-      const y = 58 - ((vals[i] - lo) / (hi - lo)) * 52;
-      const gap = i === 0 || p.at - pts[i - 1].at > 20 * 60_000;
-      d += `${gap ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)} `;
-    });
-    return d;
-  };
-  const ns = "http://www.w3.org/2000/svg";
-  for (const [cls, vals] of [["h", hs], ["t", ts]]) {
-    const path = document.createElementNS(ns, "path");
-    path.setAttribute("class", cls);
-    path.setAttribute("d", line(vals));
-    svg.append(path);
-  }
-  const hours = Math.max(1, Math.round(span / 3600_000));
-  $("history-range").textContent = `${hours} h · ${Math.min(...ts).toFixed(1)}–${Math.max(...ts).toFixed(1)} °C · ${Math.round(Math.min(...hs))}–${Math.round(Math.max(...hs))} %`;
 }
 
 // --- sheets: shared --------------------------------------------------------------

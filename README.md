@@ -2,7 +2,7 @@
 
 A tiny Home Assistant for one room, running only on Vercel, with **HomeyDeck** built in at `/deck`. There's no VPS and nothing to install at home: a PWA plus a few serverless functions that talk to your **Broadlink RM4 Pro** over the internet.
 
-- **Dashboard:** your room's temperature and humidity (from the RM4 Pro's HTS2 sensor cable), with a 24-hour graph.
+- **Dashboard:** your room's temperature and humidity, live (from the RM4 Pro's HTS2 sensor cable).
 - **Room light:** a card on the dashboard with buttons you set up yourself (On, Off, Brighter, Dimmer, or anything else).
 - **Record anything:** remotes by type (TV, AC, light, fan, speaker, projector, TV box, other), each starting with the usual buttons. Record them from your real remote (infrared, or 433/315 MHz radio), or paste Broadlink codes from Home Assistant/SmartIR.
 - **HomeyDeck included:** the HomeyDeck app (wake and control your gaming PC) is the `/deck` page, with one sign-in for both. Its API, agents and Steam Deck plugin work exactly as before.
@@ -98,7 +98,6 @@ The old `homeydeck.vercel.app` project is paused. Agents and the Steam Deck plug
 ## Things to know
 
 - **The open UDP port has no password.** Broadlink's local protocol has no real authentication, so anyone who finds the forwarded port can send IR/RF codes through your RM4. The risk is small (worst case, someone toggles your TV or light), but it's real. A non-standard external port helps. Close the forward if you stop using this.
-- **History only fills in while the app is open.** Every time the dashboard reads the sensor (once a minute while open), it logs a point at most every 5 minutes. Always-on logging needs a scheduler, and Vercel Hobby cron runs only once a day.
 - **Each action is one internet round trip to your house**, usually a fraction of a second. The device session key is cached in Redis for 20 minutes, so most taps skip the auth handshake. If the RM4 rebooted, Homey Home authenticates again automatically.
 - **Upstash usage** is small: about 2–4 commands per tap or reading.
 
